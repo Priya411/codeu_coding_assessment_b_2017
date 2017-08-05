@@ -15,11 +15,11 @@
 package com.google.codeu.mathlang.impl;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
 
-import com.google.codeu.mathlang.parsing.TokenReader;
 import com.google.codeu.mathlang.core.tokens.*;
+import com.google.codeu.mathlang.parsing.TokenReader;
+
+import javax.naming.Name;
 
 // MY TOKEN READER
 //
@@ -28,12 +28,12 @@ import com.google.codeu.mathlang.core.tokens.*;
 // You should not need to change any other files to get your token reader to
 // work with the test of the system.
 public final class MyTokenReader implements TokenReader {
-  public ArrayList<String> splitSource;
 
+  String source;
   public MyTokenReader(String source) {
     // Your token reader will only be given a string for input. The string will
     // contain the whole source (0 or more lines).
-    splitSourceToArray(source);
+    this.source=source;
   }
 
   @Override
@@ -44,68 +44,90 @@ public final class MyTokenReader implements TokenReader {
 
     // If for any reason you detect an error in the input, you may throw an IOException
     // which will stop all execution.
-    for(String string: splitSource)
-    {
-      System.out.println(string);
-    }
-    if(splitSource.size()==0 || (splitSource.get(0).equals(";")) &&splitSource.size()==1){
-      System.out.println("reached end");
-      return null;
-    }
-    if ((splitSource.get(0).equals(";")||splitSource.get(0).equals(" ")) &&splitSource.size()>1)
-    {
-      System.out.println("reached middle");
-      splitSource.remove(0);
-      next();
-    }
-    if(splitSource.get(0).indexOf(" ")!=splitSource.get(0).length()-1)
-    {
-      System.out.println("reached string");
-      String token = splitSource.get(0);
-      splitSource.remove(0);
-      return new StringToken(token);
-    }
-    if(splitSource.get(0).length()>1)
-    {
-      String token = splitSource.get(0);
-      splitSource.remove(0);
-      if(Character.isLetter(token.charAt(0))) {
-        System.out.println("reached name");
-        return new NameToken(token);
-      }
-      else {
-        System.out.println("reached string");
-        return new StringToken(token);
-      }
-    }
-    if(splitSource.get(0).length()==1)
-    {
-      String token = splitSource.get(0);
-      splitSource.remove(0);
-      if(Character.isDigit(token.charAt(0))) {
-        System.out.println("reached number");
-        return new NumberToken(Double.parseDouble(token));
-      }
-      else {
-        System.out.println("reached synbol");
-        return new SymbolToken(token.charAt(0));
-      }
-    }
-    return null;
+    source = source.trim();
+    return getToken();
   }
 
-  public void splitSourceToArray(String source)
+  public boolean isSymbol(char inpChar)
   {
-    //This function will split the input source into any arrayList of the tokens
-    // NameToken: No white space, starts with alphabetical character
-    // NumberToken: Floating point numerical token
-    // StringToken: String token, no restrictions on character types
-    // SymbolToken: Single character token used by the parser
-    int indexSplit = -1;
-    splitSource = new ArrayList<>(Arrays.asList(source.split("\"")));
-    for(String string: splitSource)
+    return (inpChar==';' || inpChar=='+' || inpChar=='-' || inpChar=='*' || inpChar=='/' || inpChar=='=');
+  }
+  public Token getToken() throws IOException
+  {
+    if(source.length()==0)
     {
-      System.out.println(string);
+      return null;
     }
+    char firstChar = source.charAt(0);
+    if(Character.isDigit(firstChar))
+    {
+      return getNumber();
+    }
+    else if(Character.isLetter(firstChar))
+    {
+      return getName();
+    }
+    else if(firstChar=='\"')
+    {
+      return getStringTok();
+    }
+    else if(isSymbol(firstChar))
+    {
+      return getSymbol();
+    }
+    throw new IOException();
+
+  }
+
+  public NameToken getName()
+  {
+    int stop = 0;
+    while(Character.isLetter(source.charAt(stop)))
+    {
+      stop++;
+    }
+    String name = source.substring(0,stop);
+    name.replaceAll(" ", "");
+    source = source.substring(stop);
+    return new NameToken(name);
+  }
+
+  public NumberToken getNumber()
+  {
+    int index = 0;
+    while(index<source.length()&&Character.isDigit(source.charAt(index)))
+    {
+      index++;
+    }
+    if(index<source.length()&&source.charAt(index)=='.')
+    {
+      index++;
+    }
+    while(index<source.length()&&Character.isDigit(source.charAt(index)))
+    {
+      index++;
+    }
+    String number = source.substring(0,index);
+    source = source.substring(index);
+    return new NumberToken(Double.parseDouble(number));
+  }
+
+  public StringToken getStringTok() throws IOException
+  {
+    int stop = source.indexOf('\"', source.indexOf('\"') + 1);
+    if(stop==-1)
+    {
+      throw new IOException();
+    }
+    String string = source.substring(1,stop);
+    source = source.substring(stop+1);
+    return new StringToken(string);
+  }
+
+  public SymbolToken getSymbol()
+  {
+    char symbol = source.charAt(0);
+    source = source.substring(1);
+    return new SymbolToken(symbol);
   }
 }
